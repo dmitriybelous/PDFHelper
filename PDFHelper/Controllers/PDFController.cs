@@ -11,7 +11,8 @@ namespace PDFHelper.Controllers
         // GET: PDF
         public ActionResult Index()
         {
-           
+            //PDFHelper pdf = new PDFHelper("your pdf path.pdf");
+
             return View();
         }
     }
