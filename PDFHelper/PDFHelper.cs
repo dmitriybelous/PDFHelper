@@ -192,15 +192,15 @@ namespace PDFHelper
             }
             catch (Exception)
             {
-
                 throw;
             }
 
             return created;
         }
 
-        public void WriteTextToPDF(string text, string outputPdfPath)
+        public static bool WriteTextToPDF(string text, string outputPdfPath)
         {
+            bool created = false;
             try
             {
                 Document myDocument = new Document(PageSize.LETTER, 20, 15, 25, 25);
@@ -208,12 +208,15 @@ namespace PDFHelper
                 myDocument.Open();
                 myDocument.Add(new Paragraph(text));
                 myDocument.Close();
+                created = true;
             }
             catch (Exception)
             {
 
                 throw;
             }
+
+            return created;
         }
 
         public int CountPages()
