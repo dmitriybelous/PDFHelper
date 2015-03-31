@@ -9,12 +9,18 @@ namespace PDFHelper.Tests
     {
         static string path = @"C:\test.pdf";
 
+        [ClassInitialize()]
+        public static void ClassInit(TestContext context)
+        {
+            if (!File.Exists(path))
+            {
+                PDFHelper.CreatePDF("This is the test", path);
+            }
+        }
+
         public SmokeTest ()
         {
-           if (!File.Exists(path))
-           {
-               PDFHelper.WriteTextToPDF("This is the test", path);
-           }
+
         }
 
         [TestMethod]
@@ -32,7 +38,7 @@ namespace PDFHelper.Tests
         }
 
         [TestMethod]
-        public void WriteTextToPDF()
+        public void CreatePDF()
         {
             PDFHelper helper = new PDFHelper(path);
             bool exist = File.Exists(path);
@@ -40,16 +46,16 @@ namespace PDFHelper.Tests
         }
 
         [TestMethod]
-        public void GetBytesFromFile()
+        public void ConvertToBytes()
         {
-            Assert.AreNotEqual(null, PDFHelper.GetBytesFromFile(path));
+            Assert.AreNotEqual(null, PDFHelper.ConvertToBytes(path));
         }
 
         [TestMethod]
         public void CombineMultiplePDFs()
         {
             string secondPDF = @"C:\test2.pdf";
-            PDFHelper.WriteTextToPDF("This is the test 2", secondPDF);
+            PDFHelper.CreatePDF("This is the test 2", secondPDF);
 
             string [] filePaths = { path, secondPDF};
             string combPath = @"C:\combine.pdf";
@@ -64,6 +70,14 @@ namespace PDFHelper.Tests
         {
             PDFHelper helper = new PDFHelper(path);
             Assert.AreNotEqual(null, helper.CountPages());
+        }
+
+        [TestMethod]
+        public void ExtractText()
+        {
+            PDFHelper helper = new PDFHelper(path);
+            string text = helper.ExtractText(1);
+            Assert.AreNotEqual(null, text);
         }
 
         [ClassCleanup()]

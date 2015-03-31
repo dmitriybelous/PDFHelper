@@ -11,7 +11,9 @@ namespace PDFHelper.Controllers
         // GET: PDF
         public ActionResult Index()
         {
-            //PDFHelper pdf = new PDFHelper("your pdf path.pdf");
+            PDFHelper pdf = new PDFHelper(@"C:\test.pdf");
+            //pdf.Download();
+            //PDFHelper.CreatePDF("Create pdf test", @"C:\test2.pdf");
 
             return View();
         }

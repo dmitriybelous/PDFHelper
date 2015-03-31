@@ -90,7 +90,7 @@ namespace PDFHelper
                         PRAcroForm form = reader.AcroForm;
                         if (form != null)
                         {
-                            writer.CopyAcroForm(reader);
+                            writer.AddDocument(reader);
                         }
 
                         reader.Close();
@@ -178,42 +178,48 @@ namespace PDFHelper
             }
         }
 
-        public static bool CreateBlankPage(string outputPdfPath)
+        public string ExtractText(int pageNumber)
+        {
+            PdfReader reader = _pdfReader;
+            string text = iTextSharp.text.pdf.parser.PdfTextExtractor.GetTextFromPage(reader, pageNumber, new iTextSharp.text.pdf.parser.LocationTextExtractionStrategy());
+            return text;
+        }
+
+        public static bool CreateBlankPDF(string pdfPath)
         {
             bool created = false;
             try
             {
-                Document myDocument = new Document(PageSize.LETTER, 20, 15, 25, 25);
-                PdfWriter.GetInstance(myDocument, new FileStream(outputPdfPath, FileMode.Create));
-                myDocument.Open();
-                myDocument.Add(new Paragraph());
-                myDocument.Close();
+                Document document = new Document(PageSize.LETTER, 20, 15, 25, 25);
+                PdfWriter.GetInstance(document, new FileStream(pdfPath, FileMode.Create));
+                document.Open();
+                document.Add(new Paragraph());
+                document.Close();
                 created = true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw;
+                throw ex;
             }
 
             return created;
         }
 
-        public static bool WriteTextToPDF(string text, string outputPdfPath)
+        public static bool CreatePDF(string text, string outputPdfPath)
         {
             bool created = false;
             try
             {
-                Document myDocument = new Document(PageSize.LETTER, 20, 15, 25, 25);
-                PdfWriter.GetInstance(myDocument, new FileStream(outputPdfPath, FileMode.Create));
-                myDocument.Open();
-                myDocument.Add(new Paragraph(text));
-                myDocument.Close();
+                Document document = new Document(PageSize.LETTER, 20, 15, 25, 25);
+                PdfWriter.GetInstance(document, new FileStream(outputPdfPath, FileMode.Create));
+                document.Open();
+                document.Add(new Paragraph(text));
+                document.Close();
                 created = true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                throw ex;
             }
 
             return created;
@@ -234,8 +240,15 @@ namespace PDFHelper
             ExtractPages(outputPdfPath, 1, _pdfReader.NumberOfPages - 1);
         }
 
-        public static byte[] GetBytesFromFile(string fullPDFPath)
+        public byte[] ConvertToBytes()
         {
+            return ConvertToBytes(_pdfPath);
+        }
+
+        public static byte[] ConvertToBytes(string fullPDFPath)
+        {
+            // this method is limited to 2^32 byte files (4.2 GB)
+
             FileStream fs = null;
             try
             {
@@ -252,6 +265,106 @@ namespace PDFHelper
                     fs.Dispose();
                 }
             }
+        }
+
+        public MemoryStream CreatePDFInMemory(string text)
+        {
+            Document document = new Document();
+            MemoryStream memoryStream = new MemoryStream();
+            try
+            {
+                PdfWriter writer = PdfWriter.GetInstance(document, memoryStream);
+                document.Open();
+                document.Add(new Paragraph(text));
+                writer.CloseStream = false;
+                document.Close();
+                //Get the pointer to the beginning of the stream. 
+                memoryStream.Position = 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return memoryStream;
+        }
+
+
+        public MemoryStream ConvertPDFToMemory()
+        {
+            MemoryStream ms = null;
+
+            try
+            {
+                PdfReader reader = _pdfReader;
+                using (ms = new MemoryStream())
+                {
+                    PdfStamper stamper = new PdfStamper(reader, ms);
+                    stamper.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return ms;
+        }
+
+        public MemoryStream ConvertPDFToMemory(Dictionary<string, string> items)
+        {
+            MemoryStream ms = null;
+
+            try
+            {
+                PdfReader reader = _pdfReader;
+                using (ms = new MemoryStream())
+                {
+                    PdfStamper stamper = new PdfStamper(reader, ms);
+                    AcroFields pdfFormFields = stamper.AcroFields;
+                    foreach (KeyValuePair<string, string> item in items)
+                    {
+                        pdfFormFields.SetField(item.Key, item.Value);
+                    }
+                    stamper.FormFlattening = true;
+                    stamper.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return ms;
+        }
+
+        public void Download()
+        {
+            byte[] pdf = ConvertToBytes(_pdfPath);
+
+            HttpContext.Current.Response.Clear();
+            HttpContext.Current.Response.ClearContent();
+            HttpContext.Current.Response.ClearHeaders();
+            HttpContext.Current.Response.ContentType = "application/pdf";
+            HttpContext.Current.Response.AppendHeader("Content-Disposition", "attachment;filename=file.pdf");
+            HttpContext.Current.Response.OutputStream.Write(pdf, 0, pdf.Length);
+            HttpContext.Current.Response.OutputStream.Flush();
+            HttpContext.Current.Response.OutputStream.Close();
+            HttpContext.Current.Response.End();
+        }
+
+        public static void DownloadAsPDF(MemoryStream ms)
+        {
+            HttpContext.Current.Response.Clear();
+            HttpContext.Current.Response.ClearContent();
+            HttpContext.Current.Response.ClearHeaders();
+            HttpContext.Current.Response.ContentType = "application/pdf";
+            HttpContext.Current.Response.AppendHeader("Content-Disposition", "attachment;filename=file.pdf");
+            HttpContext.Current.Response.OutputStream.Write(ms.GetBuffer(), 0, ms.GetBuffer().Length);
+            HttpContext.Current.Response.OutputStream.Flush();
+            HttpContext.Current.Response.OutputStream.Close();
+            HttpContext.Current.Response.End();
+            ms.Close();
         }
     }
 }
