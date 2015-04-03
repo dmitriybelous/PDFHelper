@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace PDFHelper.Tests
@@ -52,14 +53,40 @@ namespace PDFHelper.Tests
         }
 
         [TestMethod]
+        public void ConvertPDFToMemory()
+        {
+            PDFHelper helper = new PDFHelper(path);
+            Assert.AreNotEqual(null, helper.ConvertPDFToMemory());
+        }
+
+        [TestMethod]
         public void CombineMultiplePDFs()
         {
             string secondPDF = @"C:\test2.pdf";
             PDFHelper.CreatePDF("This is the test 2", secondPDF);
 
-            string [] filePaths = { path, secondPDF};
+            List<string> filePaths = new List<string>();
+            filePaths.Add(path);
+            filePaths.Add(secondPDF);
             string combPath = @"C:\combine.pdf";
             Assert.AreNotEqual(null, PDFHelper.CombineMultiplePDFs(filePaths,combPath));
+
+            File.Delete(secondPDF);
+            File.Delete(combPath);
+        }
+
+        [TestMethod]
+        public void CombinePDFsInMemory()
+        {
+            string secondPDF = @"C:\test2.pdf";
+            PDFHelper.CreatePDF("This is the test 2", secondPDF);
+
+            //string [] filePaths = { path, secondPDF};
+            List<string> filePaths = new List<string>();
+            filePaths.Add(path);
+            filePaths.Add(secondPDF);
+            string combPath = @"C:\combine.pdf";
+            Assert.AreNotEqual(null, PDFHelper.CombineMultiplePDFs(filePaths));
 
             File.Delete(secondPDF);
             File.Delete(combPath);
@@ -78,6 +105,19 @@ namespace PDFHelper.Tests
             PDFHelper helper = new PDFHelper(path);
             string text = helper.ExtractText(1);
             Assert.AreNotEqual(null, text);
+        }
+
+        [TestMethod]
+        public void Burst()
+        {
+            PDFHelper helper = new PDFHelper(path);
+            List<string> paths = helper.Burst();
+            Assert.AreNotEqual(0, paths.Count);
+
+            foreach (var pdf in paths)
+            {
+                  File.Delete(pdf);
+            }
         }
 
         [ClassCleanup()]

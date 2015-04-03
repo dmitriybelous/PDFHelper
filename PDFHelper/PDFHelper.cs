@@ -6,6 +6,7 @@ using System.IO;
 
 using iTextSharp.text;
 using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.parser;
 
 namespace PDFHelper
 {
@@ -65,7 +66,13 @@ namespace PDFHelper
             }
         }
 
-        public static string CombineMultiplePDFs(string[] filePaths, string outputPdfPath)
+        /// <summary>
+        /// Combines multiple pdfs in one pdf
+        /// </summary>
+        /// <param name="filePaths">Paths of pdfs that needs to be combined together</param>
+        /// <param name="outputPdfPath">Path where to store mered pdf</param>
+        /// <returns></returns>
+        public static string CombineMultiplePDFs(List<string> filePaths, string outputPdfPath)
         {
             try
             {
@@ -108,21 +115,69 @@ namespace PDFHelper
             return outputPdfPath;
         }
 
+        /// <summary>
+        /// Combines multiples pdfs in the memory
+        /// </summary>
+        /// <param name="filePaths"></param>
+        /// <returns>Returns MemoryStream object with combine pdfs in it</returns>
+        public static MemoryStream CombineMultiplePDFs(List<string> filePaths)
+        {
+            List<byte[]> files = new List<byte[]>();
+
+            foreach (var filePath in filePaths)
+            {
+                files.Add(ConvertToBytes(filePath));
+            }
+
+            if (files.Count > 1)
+            {
+                if (files.Count == 1)
+                {
+                    return new MemoryStream(files[0]);
+                }
+
+                using (MemoryStream outputms = new MemoryStream())
+                {
+                    using (Document document = new Document())
+                    {
+                        using (PdfSmartCopy pCopy = new PdfSmartCopy(document, outputms))
+                        {
+                            document.Open();
+                            foreach (byte[] file in files)
+                            {
+                                using (PdfReader pdfFile = new PdfReader(file))
+                                {
+                                    for (int i = 1; i <= pdfFile.NumberOfPages; i++)
+                                    {
+                                        pCopy.AddPage(pCopy.GetImportedPage(pdfFile, i));
+                                        pCopy.FreeReader(pdfFile);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return outputms;
+                }
+            }
+
+            return null;
+        }
+
         public void ExtractPage(string outputPdfPath, int pageNumber, string password = "")
         {
             try
             {
-                PdfReader reader = _pdfReader;
-                Document document = new Document(reader.GetPageSizeWithRotation(pageNumber));
+                Document document = new Document(_pdfReader.GetPageSizeWithRotation(pageNumber));
                 Stream os = new System.IO.FileStream(outputPdfPath, System.IO.FileMode.Create);
                 PdfCopy pdfCopyProvider = new PdfCopy(document, os);
 
                 document.Open();
-                PdfImportedPage importedPage = pdfCopyProvider.GetImportedPage(reader, pageNumber);
+                PdfImportedPage importedPage = pdfCopyProvider.GetImportedPage(_pdfReader, pageNumber);
                 pdfCopyProvider.AddPage(importedPage);
                 document.Close();
 
-                reader.Close();
+                _pdfReader.Close();
             }
             catch (Exception ex)
             {
@@ -178,10 +233,15 @@ namespace PDFHelper
             }
         }
 
+        /// <summary>
+        /// Extracts text from pdf
+        /// </summary>
+        /// <param name="pageNumber">Page from which to extract text</param>
+        /// <returns></returns>
         public string ExtractText(int pageNumber)
         {
             PdfReader reader = _pdfReader;
-            string text = iTextSharp.text.pdf.parser.PdfTextExtractor.GetTextFromPage(reader, pageNumber, new iTextSharp.text.pdf.parser.LocationTextExtractionStrategy());
+            string text = PdfTextExtractor.GetTextFromPage(reader, pageNumber, new LocationTextExtractionStrategy());
             return text;
         }
 
@@ -336,6 +396,49 @@ namespace PDFHelper
             }
 
             return ms;
+        }
+
+        public List<string> Burst()
+        {
+            PdfReader reader = _pdfReader;
+            List<string> paths = new List<string>();
+            string pdfPath = string.Empty;
+
+            for (int i = 1; i <= reader.NumberOfPages; i++)
+            {
+                Document document = new Document();
+                pdfPath = _pdfPath.Replace(".pdf", i.ToString() + ".pdf");
+                paths.Add(pdfPath);
+                PdfSmartCopy copy = new PdfSmartCopy(document, new FileStream(pdfPath, FileMode.Create));
+                document.Open();
+                copy.AddPage(copy.GetImportedPage(reader, i));
+                document.Close();
+            }
+
+            return paths;
+        }
+
+        public void AddBlankPage(string outputPdfPath)
+        {
+            //Document document = new Document(_pdfReader.GetPageSizeWithRotation(1));
+            //document.Open();
+            //bool result = document.NewPage();
+            //document.Add(new Paragraph());
+            //document.Close();
+
+            //Document document = new Document(_pdfReader.GetPageSizeWithRotation(1));
+            //PdfSmartCopy copy = new PdfSmartCopy(document, new FileStream(outputPdfPath, FileMode.Create));
+            //document.Open();
+            //bool result = document.NewPage();
+            //document.Add(new Paragraph());
+            //document.Close();
+
+            //Document document = new Document();
+            //PdfSmartCopy copy = new PdfSmartCopy(document, new FileStream(_pdfPath, FileMode.Create));
+            //document.Open();
+            //copy.NewPage();
+            //document.Close();
+
         }
 
         public void Download()
